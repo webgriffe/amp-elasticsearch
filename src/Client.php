@@ -31,35 +31,35 @@ class Client
         $this->baseUri = rtrim($baseUri, '/');
     }
 
-    public function indicesCreate(string $index): Promise
+    public function createIndex(string $index): Promise
     {
         $method = 'PUT';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function indicesExists(string $index): Promise
+    public function existsIndex(string $index): Promise
     {
         $method = 'HEAD';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function indicesGet(string $index): Promise
+    public function getIndex(string $index): Promise
     {
         $method = 'GET';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function indicesDelete(string $index): Promise
+    public function deleteIndex(string $index): Promise
     {
         $method = 'DELETE';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function documentsIndex(
+    public function indexDocument(
         string $index,
         string $id,
         array $body,
@@ -74,14 +74,14 @@ class Client
         return $this->doRequest($this->createJsonRequest($method, $uri, $body));
     }
 
-    public function documentsExists(string $index, string $id, string $type = '_doc'): Promise
+    public function existsDocument(string $index, string $id, string $type = '_doc'): Promise
     {
         $method = 'HEAD';
         $uri = implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]);
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function documentsGet(string $index, string $id, array $options = [], string $type = '_doc'): Promise
+    public function getDocument(string $index, string $id, array $options = [], string $type = '_doc'): Promise
     {
         $method = 'GET';
         $uri = implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]);
@@ -91,7 +91,7 @@ class Client
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function documentsDelete(string $index, string $id, array $options = [], string $type = '_doc'): Promise
+    public function deleteDocument(string $index, string $id, array $options = [], string $type = '_doc'): Promise
     {
         $method = 'DELETE';
         $uri = implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]);
