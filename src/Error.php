@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Amp\Elasticsearch;
 
-class Error extends \Error
+class Error extends \RuntimeException
 {
     /**
      * @var array|null
