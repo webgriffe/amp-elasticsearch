@@ -35,28 +35,28 @@ class Client
     {
         $method = 'PUT';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function existsIndex(string $index): Promise
     {
         $method = 'HEAD';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function getIndex(string $index): Promise
     {
         $method = 'GET';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function deleteIndex(string $index): Promise
     {
         $method = 'DELETE';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function indexDocument(
@@ -78,7 +78,7 @@ class Client
     {
         $method = 'HEAD';
         $uri = implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]);
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function getDocument(string $index, string $id, array $options = [], string $type = '_doc'): Promise
@@ -88,7 +88,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function deleteDocument(string $index, string $id, array $options = [], string $type = '_doc'): Promise
@@ -98,7 +98,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri));
+        return $this->doJsonRequest($method, $uri);
     }
 
     public function uriSearchOneIndex(string $index, string $query, array $options = []): Promise
@@ -149,6 +149,16 @@ class Client
         $uri = implode('/', [$this->baseUri, urlencode($indexOrIndicesOrAll), urlencode('_search')]);
         $options['q'] = $query;
         $uri .= '?' . http_build_query($options);
+        return $this->doJsonRequest($method, $uri);
+    }
+
+    /**
+     * @param string $method
+     * @param string $uri
+     * @return Promise
+     */
+    private function doJsonRequest(string $method, string $uri): Promise
+    {
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 }
