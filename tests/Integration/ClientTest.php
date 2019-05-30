@@ -12,6 +12,7 @@ use PHPUnit\Framework\TestCase;
 class ClientTest extends TestCase
 {
     const TEST_INDEX = 'test_index';
+    const DEFAULT_ES_URL = 'http://127.0.0.1:9200';
 
     /**
      * @var Client
@@ -20,7 +21,8 @@ class ClientTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->client = new Client('http://127.0.0.1:9200');
+        $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
+        $this->client = new Client($esUrl);
         try {
             Promise\wait($this->client->indicesExists(self::TEST_INDEX));
         } catch (Error $e) {
