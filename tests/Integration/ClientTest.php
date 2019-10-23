@@ -150,4 +150,23 @@ class ClientTest extends TestCase
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
+
+    public function testStatsIndexWithAllMetric(): void
+    {
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
+        );
+        $response = Promise\wait($this->client->statsIndex(self::TEST_INDEX));
+        $this->assertEquals(1, $response['indices'][self::TEST_INDEX]['total']['indexing']['index_total']);
+    }
+
+    public function testStatsIndexWithDocsMetric(): void
+    {
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
+        );
+        $response = Promise\wait($this->client->statsIndex(self::TEST_INDEX, 'docs'));
+        $this->assertArrayNotHasKey('indexing', $response['indices'][self::TEST_INDEX]['total']);
+        $this->assertEquals(1, $response['indices'][self::TEST_INDEX]['total']['docs']['count']);
+    }
 }

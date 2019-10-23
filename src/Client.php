@@ -59,6 +59,16 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
+    public function statsIndex(string $index, string $metric = '_all', array $options = []): Promise
+    {
+        $method = 'GET';
+        $uri = implode('/', [$this->baseUri, urlencode($index), '_stats', $metric]);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doJsonRequest($method, $uri);
+    }
+
     public function indexDocument(
         string $index,
         string $id,
