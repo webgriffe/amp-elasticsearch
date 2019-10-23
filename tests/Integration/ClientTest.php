@@ -193,4 +193,11 @@ class ClientTest extends TestCase
         $this->assertCount(1, $response);
         $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
     }
+
+    public function testCatHealth(): void
+    {
+        $response = Promise\wait($this->client->catHealth());
+        $this->assertCount(1, $response);
+        $this->assertEquals('docker-cluster', $response[0]['cluster']);
+    }
 }

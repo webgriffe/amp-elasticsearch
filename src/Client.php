@@ -140,6 +140,16 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
+    public function catHealth(array $options = [])
+    {
+        $method = 'GET';
+        $uri = implode('/', [$this->baseUri, '_cat', 'health']);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doJsonRequest($method, $uri);
+    }
+
     private function createJsonRequest(string $method, string $uri, array $body = null): Request
     {
         $request = (new Request($uri, $method))
