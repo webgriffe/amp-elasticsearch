@@ -23,15 +23,10 @@ class ClientTest extends TestCase
     {
         $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
         $this->client = new Client($esUrl);
-        try {
-            Promise\wait($this->client->existsIndex(self::TEST_INDEX));
-        } catch (Error $e) {
-            if ($e->getCode() === 404) {
-                return;
-            }
-            throw $e;
+        $indices = Promise\wait($this->client->catIndices());
+        foreach ($indices as $index) {
+            Promise\wait($this->client->deleteIndex($index['index']));
         }
-        Promise\wait($this->client->deleteIndex(self::TEST_INDEX));
     }
 
     public function testCreateIndex(): void
@@ -168,5 +163,34 @@ class ClientTest extends TestCase
         $response = Promise\wait($this->client->statsIndex(self::TEST_INDEX, 'docs'));
         $this->assertArrayNotHasKey('indexing', $response['indices'][self::TEST_INDEX]['total']);
         $this->assertEquals(1, $response['indices'][self::TEST_INDEX]['total']['docs']['count']);
+    }
+
+    public function testCatIndices(): void
+    {
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
+        );
+        $response = Promise\wait($this->client->catIndices());
+        $this->assertCount(1, $response);
+        $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
+    }
+
+    public function testCatIndicesWithoutIndices(): void
+    {
+        $response = Promise\wait($this->client->catIndices());
+        $this->assertCount(0, $response);
+    }
+
+    public function testCatIndicesWithSpecificIndex(): void
+    {
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
+        );
+        Promise\wait(
+            $this->client->indexDocument('another_index', 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
+        );
+        $response = Promise\wait($this->client->catIndices(self::TEST_INDEX));
+        $this->assertCount(1, $response);
+        $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
     }
 }

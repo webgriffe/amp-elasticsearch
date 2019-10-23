@@ -126,10 +126,25 @@ class Client
         return $this->uriSearch('_all', $query, $options);
     }
 
+    public function catIndices(string $index = null, array $options = []): Promise
+    {
+        $method = 'GET';
+        $uri = [$this->baseUri, '_cat', 'indices'];
+        if ($index) {
+            $uri[] = urlencode($index);
+        }
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doJsonRequest($method, $uri);
+    }
+
     private function createJsonRequest(string $method, string $uri, array $body = null): Request
     {
         $request = (new Request($uri, $method))
-            ->withHeader('Content-Type', 'application/json');
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Accept', 'application/json');
         if ($body) {
             $request = $request->withBody(json_encode($body));
         }
