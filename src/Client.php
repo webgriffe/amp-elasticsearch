@@ -182,8 +182,12 @@ class Client
     {
         $method = 'GET';
         $uri = implode('/', [$this->baseUri, urlencode($indexOrIndicesOrAll), urlencode('_search')]);
-        $options['q'] = $query;
-        $uri .= '?' . http_build_query($options);
+        if (!empty($query)) {
+            $options['q'] = $query;
+        }
+        if (!empty($options)) {
+            $uri .= '?' . http_build_query($options);
+        }
         return $this->doJsonRequest($method, $uri);
     }
 
