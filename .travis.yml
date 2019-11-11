@@ -1,0 +1,17 @@
+language: php
+
+php:
+  - 7.1
+  - 7.2
+  - 7.3
+
+cache:
+  directories:
+    - $HOME/.composer/cache
+
+before_script:
+  - composer install
+  - composer global require maglnet/composer-require-checker && $HOME/.composer/vendor/bin/composer-require-checker
+
+after_success:
+  - docker run --rm -v $(pwd):/app nyholm/roave-bc-check roave-backwards-compatibility-check:assert-backwards-compatible --from=$(git describe --tags $(git rev-list --tags --max-count=1))
