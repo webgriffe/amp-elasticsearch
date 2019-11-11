@@ -140,10 +140,25 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
-    public function catHealth(array $options = [])
+    public function catHealth(array $options = []): Promise
     {
         $method = 'GET';
         $uri = implode('/', [$this->baseUri, '_cat', 'health']);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doJsonRequest($method, $uri);
+    }
+
+    public function refresh(string $indexOrIndices = null, array $options = []): Promise
+    {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($indexOrIndices) {
+            $uri[] = urlencode($indexOrIndices);
+        }
+        $uri[] = '_refresh';
+        $uri = implode('/', $uri);
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }

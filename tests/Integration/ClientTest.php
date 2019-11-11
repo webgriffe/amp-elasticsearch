@@ -200,4 +200,26 @@ class ClientTest extends TestCase
         $this->assertCount(1, $response);
         $this->assertEquals('docker-cluster', $response[0]['cluster']);
     }
+
+    public function testRefreshOneIndex(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $response = Promise\wait($this->client->refresh(self::TEST_INDEX));
+        $this->assertCount(1, $response);
+    }
+
+    public function testRefreshManyIndices(): void
+    {
+        Promise\wait($this->client->createIndex('an_index'));
+        Promise\wait($this->client->createIndex('another_index'));
+        $response = Promise\wait($this->client->refresh('an_index,another_index'));
+        $this->assertCount(1, $response);
+    }
+
+    public function testRefreshAllIndices(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $response = Promise\wait($this->client->refresh());
+        $this->assertCount(1, $response);
+    }
 }
