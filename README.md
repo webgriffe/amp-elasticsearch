@@ -10,7 +10,7 @@ concurrency framework.
 **Installation**
 
 ```bash
-composer require `webgriffe/amp-elasticsearch`
+composer require webgriffe/amp-elasticsearch
 ```
 
 **Usage**
