@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Amp\Elasticsearch;
+namespace Webgriffe\AmpElasticsearch;
 
 class Error extends \RuntimeException
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Amp\Elasticsearch\Tests\Integration;
+namespace Webgriffe\AmpElasticsearch\Tests\Integration;
 
-use Amp\Elasticsearch\Client;
-use Amp\Elasticsearch\Error;
+use Webgriffe\AmpElasticsearch\Client;
+use Webgriffe\AmpElasticsearch\Error;
 use Amp\Promise;
 use PHPUnit\Framework\TestCase;
 

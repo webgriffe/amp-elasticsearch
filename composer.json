@@ -1,6 +1,6 @@
 {
-    "name": "amphp/elasticsearch",
-    "description": "An asynchronous Elasticsearch PHP client.",
+    "name": "webgriffe/amp-elasticsearch",
+    "description": "A non-blocking ElasticSearch client for PHP based on Amp.",
     "require": {
         "php": "~7.1.0|~7.2.0|~7.3.0",
         "ext-json": "*",
@@ -9,12 +9,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Amp\\Elasticsearch\\": "src/"
+            "Webgriffe\\AmpElasticsearch\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Amp\\Elasticsearch\\Tests\\": "tests/"
+            "Webgriffe\\AmpElasticsearch\\Tests\\": "tests/"
         }
     },
     "require-dev": {

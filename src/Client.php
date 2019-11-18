@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Amp\Elasticsearch;
+namespace Webgriffe\AmpElasticsearch;
 
 use Amp\Artax\Client as HttpClient;
 use Amp\Artax\DefaultClient;
