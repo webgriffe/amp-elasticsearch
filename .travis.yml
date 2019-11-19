@@ -25,6 +25,7 @@ before_install:
   - sudo systemctl start elasticsearch
 
 before_script:
+  - sleep 10 # ElasticSearch takes few seconds to start...
   - composer install
   - composer global require maglnet/composer-require-checker && $HOME/.composer/vendor/bin/composer-require-checker
 
