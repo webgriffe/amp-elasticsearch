@@ -198,7 +198,7 @@ class ClientTest extends TestCase
     {
         $response = Promise\wait($this->client->catHealth());
         $this->assertCount(1, $response);
-        $this->assertEquals('docker-cluster', $response[0]['cluster']);
+        $this->assertArrayHasKey('status', $response[0]);
     }
 
     public function testRefreshOneIndex(): void
