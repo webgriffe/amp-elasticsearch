@@ -20,7 +20,7 @@ class Error extends \RuntimeException
     {
         $message = 'An error occurred. Response code: ' . $code;
         if ($errorJson) {
-            $this->data = (array)json_decode($errorJson, true)['error'];
+            $this->data = (array)json_decode($errorJson, true);
             $prettyErrorJson = json_encode(json_decode($errorJson, false), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             $message .= PHP_EOL . $prettyErrorJson;
         }
