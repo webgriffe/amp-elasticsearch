@@ -165,6 +165,21 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
+    public function search(array $query, string $indexOrIndices = null, array $options = []): Promise
+    {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($indexOrIndices) {
+            $uri[] = urlencode($indexOrIndices);
+        }
+        $uri[] = '_search';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest($this->createJsonRequest($method, $uri, ['query' => $query]));
+    }
+
     private function createJsonRequest(string $method, string $uri, array $body = null): Request
     {
         $request = (new Request($uri, $method))

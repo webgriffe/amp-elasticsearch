@@ -222,4 +222,22 @@ class ClientTest extends TestCase
         $response = Promise\wait($this->client->refresh());
         $this->assertCount(1, $response);
     }
+
+    public function testSearch(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => []], ['refresh' => 'true'])
+        );
+        $query = [
+            'term' => [
+                'uuid.keyword' => [
+                    'value' => 'this-is-a-uuid'
+                ]
+            ]
+        ];
+        $response = Promise\wait($this->client->search($query));
+        $this->assertIsArray($response);
+        $this->assertCount(1, $response['hits']['hits']);
+    }
 }
