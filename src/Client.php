@@ -180,6 +180,22 @@ class Client
         return $this->doRequest($this->createJsonRequest($method, $uri, ['query' => $query]));
     }
 
+    public function count(string $index, array $options = [], array $query = null): Promise
+    {
+        $method = 'GET';
+        $uri = [$this->baseUri, $index];
+        $uri[] = '_count';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        $body = null;
+        if (null !== $query) {
+            $body = ['query' => $query];
+        }
+        return $this->doRequest($this->createJsonRequest($method, $uri, $body));
+    }
+
     private function createJsonRequest(string $method, string $uri, array $body = null): Request
     {
         $request = (new Request($uri, $method))

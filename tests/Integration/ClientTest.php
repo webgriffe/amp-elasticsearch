@@ -240,4 +240,36 @@ class ClientTest extends TestCase
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
+
+    public function testCount(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true'])
+        );
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true'])
+        );
+
+        $response = Promise\wait($this->client->count(self::TEST_INDEX));
+
+        $this->assertIsArray($response);
+        $this->assertEquals(2, $response['count']);
+    }
+
+    public function testCountWithQuery(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'kimchy'], ['refresh' => 'true'])
+        );
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'foo'], ['refresh' => 'true'])
+        );
+
+        $response = Promise\wait($this->client->count(self::TEST_INDEX, [], ['term' => ['user' => 'kimchy']]));
+
+        $this->assertIsArray($response);
+        $this->assertEquals(1, $response['count']);
+    }
 }
