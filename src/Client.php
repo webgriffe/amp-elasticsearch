@@ -81,7 +81,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri, $body));
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($body)));
     }
 
     public function existsDocument(string $index, string $id, string $type = '_doc'): Promise
@@ -177,7 +177,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri, ['query' => $query]));
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
     }
 
     public function count(string $index, array $options = [], array $query = null): Promise
@@ -189,20 +189,36 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        $body = null;
         if (null !== $query) {
-            $body = ['query' => $query];
+            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri, $body));
+        return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    private function createJsonRequest(string $method, string $uri, array $body = null): Request
+    public function bulk(array $body, string $index = null, array $options = []): Promise
+    {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($index) {
+            $uri[] = urlencode($index);
+        }
+        $uri[] = '_bulk';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest(
+            $this->createJsonRequest($method, $uri, implode(PHP_EOL, array_map('json_encode', $body)) . PHP_EOL)
+        );
+    }
+
+    private function createJsonRequest(string $method, string $uri, string $body = null): Request
     {
         $request = (new Request($uri, $method))
             ->withHeader('Content-Type', 'application/json')
             ->withHeader('Accept', 'application/json');
         if ($body) {
-            $request = $request->withBody(json_encode($body));
+            $request = $request->withBody($body);
         }
         return $request;
     }

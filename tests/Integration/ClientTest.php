@@ -272,4 +272,28 @@ class ClientTest extends TestCase
         $this->assertIsArray($response);
         $this->assertEquals(1, $response['count']);
     }
+
+    public function testBulkIndex(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $body = [];
+        $responses = [];
+        for ($i = 1; $i <= 1234; $i++) {
+            $body[] = ['index' => ['_id' => '']];
+            $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' .  $i];
+
+            // Every 100 documents stop and send the bulk request
+            if ($i % 100 === 0) {
+                $responses = Promise\wait($this->client->bulk($body, self::TEST_INDEX));
+                $body = [];
+                unset($responses);
+            }
+        }
+        if (!empty($body)) {
+            $responses = Promise\wait($this->client->bulk($body, self::TEST_INDEX));
+        }
+
+        $this->assertIsArray($responses);
+        $this->assertCount(34, $responses['items']);
+    }
 }
