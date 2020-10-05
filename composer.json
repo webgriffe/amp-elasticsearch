@@ -3,7 +3,7 @@
     "description": "A non-blocking ElasticSearch client for PHP based on Amp.",
     "license": "MIT",
     "require": {
-        "php": "~7.1.0|~7.2.0|~7.3.0",
+        "php": "~7.1.0|~7.2.0|~7.3.0|~7.4.0",
         "ext-json": "*",
         "amphp/artax": "^3.0",
         "amphp/amp": "^2.1"
