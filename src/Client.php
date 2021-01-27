@@ -22,9 +22,9 @@ class Client
      */
     private $httpClient;
 
-    public function __construct(string $baseUri)
+    public function __construct(string $baseUri, HttpClient $httpClient = null)
     {
-        $this->httpClient = HttpClientBuilder::buildDefault();
+        $this->httpClient = $httpClient ?: HttpClientBuilder::buildDefault();
         $this->baseUri = rtrim($baseUri, '/');
     }
 
@@ -174,7 +174,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($query)));
     }
 
     public function count(string $index, array $options = [], array $query = null): Promise
@@ -187,12 +187,18 @@ class Client
             $uri .= '?' . http_build_query($options);
         }
         if (null !== $query) {
-            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
+            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($query)));
         }
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function bulk(array $body, string $index = null, array $options = []): Promise
+	/**
+	 * @param array|string $body
+	 * @param string|null $index
+	 * @param array       $options
+	 * @return Promise
+	 */
+    public function bulk($body, string $index = null, array $options = []): Promise
     {
         $method = 'POST';
         $uri = [$this->baseUri];
@@ -205,8 +211,22 @@ class Client
             $uri .= '?' . http_build_query($options);
         }
         return $this->doRequest(
-            $this->createJsonRequest($method, $uri, implode(PHP_EOL, array_map('json_encode', $body)) . PHP_EOL)
+            $this->createJsonRequest($method, $uri, (is_array($body) ? implode(PHP_EOL, array_map('json_encode', $body)) : $body) . PHP_EOL)
         );
+    }
+
+    public function updateByQuery(array $body, $indexOrIndices = null, array $options = []): Promise {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($indexOrIndices) {
+            $uri[] = urlencode($indexOrIndices);
+        }
+        $uri[] = '_update_by_query';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($body)));
     }
 
     private function createJsonRequest(string $method, string $uri, string $body = null): Request
@@ -214,6 +234,7 @@ class Client
         $request = new Request($uri, $method);
         $request->setHeader('Content-Type', 'application/json');
         $request->setHeader('Accept', 'application/json');
+        $request->setBodySizeLimit(15000000);
 
         if ($body) {
             $request->setBody($body);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Webgriffe\AmpElasticsearch\Tests\Integration;
 
+use Amp\Delayed;
 use Webgriffe\AmpElasticsearch\Client;
 use Webgriffe\AmpElasticsearch\Error;
 use Amp\Promise;
@@ -103,9 +104,9 @@ class ClientTest extends TestCase
     public function testDocumentsGetWithOnlySource(): void
     {
         Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->getDocument(self::TEST_INDEX, 'my_id', [], '_source'));
+        $response = Promise\wait($this->client->getDocument(self::TEST_INDEX, 'my_id', []));
         $this->assertIsArray($response);
-        $this->assertEquals('abc', $response['testField']);
+        $this->assertEquals('abc', $response['_source']['testField']);
     }
 
     public function testDocumentsDelete(): void
@@ -230,15 +231,46 @@ class ClientTest extends TestCase
             $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => []], ['refresh' => 'true'])
         );
         $query = [
-            'term' => [
-                'uuid.keyword' => [
-                    'value' => 'this-is-a-uuid'
+            'query' => [
+                'term' => [
+                    'uuid.keyword' => [
+                        'value' => 'this-is-a-uuid'
+                    ]
                 ]
             ]
         ];
         $response = Promise\wait($this->client->search($query));
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
+    }
+
+    public function testUpdateByQuery(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait(
+            $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => '1'], ['refresh' => 'true'])
+        );
+        $query = [
+            'query' => [
+                'term' => [
+                    'uuid.keyword' => [
+                        'value' => 'this-is-a-uuid'
+                    ]
+                ]
+            ]
+        ];
+        $response = Promise\wait($this->client->search($query));
+        $this->assertIsArray($response);
+        $this->assertCount(1, $response['hits']['hits']);
+        $this->assertEquals('1', $response['hits']['hits'][0]['_source']['payload']);
+
+        Promise\wait($this->client->updateByQuery(array_merge($query, ['script' => [
+            'source' => 'ctx._source[\'payload\'] = \'2\'',
+            'lang' => 'painless',
+        ]]), self::TEST_INDEX, ['conflicts' => 'proceed']));
+        Promise\wait(new Delayed(1000));
+        $response = Promise\wait($this->client->search($query));
+        $this->assertEquals('2', $response['hits']['hits'][0]['_source']['payload']);
     }
 
     public function testCount(): void
@@ -267,7 +299,7 @@ class ClientTest extends TestCase
             $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'foo'], ['refresh' => 'true'])
         );
 
-        $response = Promise\wait($this->client->count(self::TEST_INDEX, [], ['term' => ['user' => 'kimchy']]));
+        $response = Promise\wait($this->client->count(self::TEST_INDEX, [], ['query' => ['term' => ['user' => 'kimchy']]]));
 
         $this->assertIsArray($response);
         $this->assertEquals(1, $response['count']);
@@ -279,7 +311,7 @@ class ClientTest extends TestCase
         $body = [];
         $responses = [];
         for ($i = 1; $i <= 1234; $i++) {
-            $body[] = ['index' => ['_id' => '']];
+            $body[] = ['index' => ['_id' => $i, '_type' => '_doc']];
             $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' .  $i];
 
             // Every 100 documents stop and send the bulk request
