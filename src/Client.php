@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Webgriffe\AmpElasticsearch;
 
-use Amp\Artax\Client as HttpClient;
-use Amp\Artax\DefaultClient;
-use Amp\Artax\Request;
-use Amp\Artax\Response;
+use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\Response;
 use function Amp\call;
 use Amp\Promise;
 
@@ -24,7 +24,7 @@ class Client
 
     public function __construct(string $baseUri, HttpClient $httpClient = null)
     {
-        $this->httpClient = new DefaultClient();
+        $this->httpClient = HttpClientBuilder::buildDefault();
         if ($httpClient) {
             $this->httpClient = $httpClient;
         }
@@ -165,7 +165,7 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
-    public function search(array $query, string $indexOrIndices = null, array $options = []): Promise
+    public function search(array $query, ?string $indexOrIndices = null, array $options = []): Promise
     {
         $method = 'POST';
         $uri = [$this->baseUri];
@@ -214,11 +214,12 @@ class Client
 
     private function createJsonRequest(string $method, string $uri, string $body = null): Request
     {
-        $request = (new Request($uri, $method))
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Accept', 'application/json');
+        $request = new Request($uri, $method);
+        $request->setHeader('Content-Type', 'application/json');
+        $request->setHeader('Accept', 'application/json');
+
         if ($body) {
-            $request = $request->withBody($body);
+            $request->setBody($body);
         }
         return $request;
     }
@@ -228,7 +229,7 @@ class Client
         return call(function () use ($request) {
             /** @var Response $response */
             $response = yield $this->httpClient->request($request);
-            $body = yield $response->getBody();
+            $body = yield $response->getBody()->buffer();
             $statusClass = (int) ($response->getStatus() / 100);
             if ($statusClass !== 2) {
                 throw new Error($body, $response->getStatus());
