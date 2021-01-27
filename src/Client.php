@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Webgriffe\AmpElasticsearch;
 
-use Amp\Artax\Client as HttpClient;
-use Amp\Artax\DefaultClient;
-use Amp\Artax\Request;
-use Amp\Artax\Response;
+use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\Response;
 use function Amp\call;
 use Amp\Promise;
 
@@ -24,7 +24,7 @@ class Client
 
     public function __construct(string $baseUri, HttpClient $httpClient = null)
     {
-        $this->httpClient = new DefaultClient();
+        $this->httpClient = HttpClientBuilder::buildDefault();
         if ($httpClient) {
             $this->httpClient = $httpClient;
         }
@@ -165,7 +165,7 @@ class Client
         return $this->doJsonRequest($method, $uri);
     }
 
-    public function search(array $query, string $indexOrIndices = null, array $options = []): Promise
+    public function search(array $query, $indexOrIndices = null, array $options = []): Promise
     {
         $method = 'POST';
         $uri = [$this->baseUri];
@@ -177,7 +177,7 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($query)));
     }
 
     public function count(string $index, array $options = [], array $query = null): Promise
@@ -190,12 +190,18 @@ class Client
             $uri .= '?' . http_build_query($options);
         }
         if (null !== $query) {
-            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode(['query' => $query])));
+            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($query)));
         }
         return $this->doRequest($this->createJsonRequest($method, $uri));
     }
 
-    public function bulk(array $body, string $index = null, array $options = []): Promise
+	/**
+	 * @param array|string $body
+	 * @param string|null $index
+	 * @param array       $options
+	 * @return Promise
+	 */
+    public function bulk($body, string $index = null, array $options = []): Promise
     {
         $method = 'POST';
         $uri = [$this->baseUri];
@@ -208,17 +214,33 @@ class Client
             $uri .= '?' . http_build_query($options);
         }
         return $this->doRequest(
-            $this->createJsonRequest($method, $uri, implode(PHP_EOL, array_map('json_encode', $body)) . PHP_EOL)
+            $this->createJsonRequest($method, $uri, (is_array($body) ? implode(PHP_EOL, array_map('json_encode', $body)) : $body) . PHP_EOL)
         );
+    }
+
+    public function updateByQuery(array $body, $indexOrIndices = null, array $options = []): Promise {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($indexOrIndices) {
+            $uri[] = urlencode($indexOrIndices);
+        }
+        $uri[] = '_update_by_query';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($body)));
     }
 
     private function createJsonRequest(string $method, string $uri, string $body = null): Request
     {
-        $request = (new Request($uri, $method))
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Accept', 'application/json');
+        $request = new Request($uri, $method);
+        $request->setHeader('Content-Type', 'application/json');
+        $request->setHeader('Accept', 'application/json');
+        $request->setBodySizeLimit(15000000);
+
         if ($body) {
-            $request = $request->withBody($body);
+            $request->setBody($body);
         }
         return $request;
     }
@@ -228,7 +250,7 @@ class Client
         return call(function () use ($request) {
             /** @var Response $response */
             $response = yield $this->httpClient->request($request);
-            $body = yield $response->getBody();
+            $body = yield $response->getBody()->buffer();
             $statusClass = (int) ($response->getStatus() / 100);
             if ($statusClass !== 2) {
                 throw new Error($body, $response->getStatus());

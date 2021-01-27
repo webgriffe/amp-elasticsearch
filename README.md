@@ -7,7 +7,7 @@ concurrency framework.
 
 **Required PHP Version**
 
-- PHP 7.1+
+- PHP 7.4+
 
 **Installation**
 
