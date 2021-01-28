@@ -33,7 +33,7 @@ jobs:
                 uses: shivammathur/setup-php@v2
                 with:
                     php-version: "${{ matrix.php }}"
-                    tools: composer:v2, composer-require-checker
+                    tools: composer:v1, composer-require-checker
 
             -   name: Get Composer cache directory
                 id: composer-cache
