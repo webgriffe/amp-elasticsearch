@@ -13,6 +13,9 @@ jobs:
             matrix:
                 php: [ 7.1, 7.2, 7.3, 7.4 ]
 
+        env:
+            ES_URL: http://127.0.0.1:9200
+
         steps:
             -   name: Configure sysctl limits
                 run: |
@@ -43,6 +46,8 @@ jobs:
                     key: ${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json **/composer.lock') }}
                     restore-keys: |
                         ${{ runner.os }}-php-${{ matrix.php }}-composer-
+
+            -   uses: actions/checkout@v2
 
             -   name: Install dependencies
                 run: composer install --no-interaction
