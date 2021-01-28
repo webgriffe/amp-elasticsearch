@@ -12,6 +12,15 @@ jobs:
             fail-fast: false
             matrix:
                 php: [ 7.1, 7.2, 7.3, 7.4 ]
+            include:
+                -   php: 7.1
+                    composer: v1
+                -   php: 7.2
+                    composer: v1
+                -   php: 7.3
+                    composer: v1
+                -   php: 7.4
+                    composer: v2
 
         env:
             ES_URL: http://127.0.0.1:9200
@@ -33,19 +42,7 @@ jobs:
                 uses: shivammathur/setup-php@v2
                 with:
                     php-version: "${{ matrix.php }}"
-                    tools: composer:v1, composer-require-checker
-
-            -   name: Get Composer cache directory
-                id: composer-cache
-                run: echo "::set-output name=dir::$(composer config cache-files-dir)"
-
-            -   name: Cache Composer
-                uses: actions/cache@v2
-                with:
-                    path: ${{ steps.composer-cache.outputs.dir }}
-                    key: ${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json **/composer.lock') }}
-                    restore-keys: |
-                        ${{ runner.os }}-php-${{ matrix.php }}-composer-
+                    tools: "composer:${{ matrix.composer }}, composer-require-checker"
 
             -   uses: actions/checkout@v2
 
