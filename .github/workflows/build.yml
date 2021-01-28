@@ -1,0 +1,63 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+
+        name: "PHP ${{ matrix.php }}"
+
+        strategy:
+            fail-fast: false
+            matrix:
+                php: [ 7.1, 7.2, 7.3, 7.4 ]
+
+        steps:
+            -   name: Configure sysctl limits
+                run: |
+                    sudo swapoff -a
+                    sudo sysctl -w vm.swappiness=1
+                    sudo sysctl -w fs.file-max=262144
+                    sudo sysctl -w vm.max_map_count=262144
+
+            -   name: Runs Elasticsearch
+                uses: elastic/elastic-github-actions/elasticsearch@master
+                with:
+                    stack-version: 7.4.1
+
+            -   name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: "${{ matrix.php }}"
+                    tools: composer:v2, composer-require-checker
+
+            -   name: Get Composer cache directory
+                id: composer-cache
+                run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+
+            -   name: Cache Composer
+                uses: actions/cache@v2
+                with:
+                    path: ${{ steps.composer-cache.outputs.dir }}
+                    key: ${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json **/composer.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-php-${{ matrix.php }}-composer-
+
+            -   name: Install dependencies
+                run: composer install --no-interaction
+
+            -   name: Composer Require Checker
+                run: composer-require-checker
+
+            -   name: PHPUnit tests
+                run: vendor/bin/phpunit tests
+
+    roave_bc_check:
+        name: Roave BC Check
+        runs-on: ubuntu-latest
+
+        steps:
+            -   uses: actions/checkout@v2
+            -   name: Roave BC Check
+                uses: docker://nyholm/roave-bc-check-ga
