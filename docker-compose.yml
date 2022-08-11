@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   php:
-    image: "php:7.2"
+    image: "php:8.0"
     volumes:
       - "./:/app"
     working_dir: "/app"
@@ -16,3 +16,5 @@ services:
     environment:
       - "discovery.type=${ES_DISCOVERY_TYPE:-single-node}"
       - "ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms512m -Xmx512m}"
+    ports:
+      - "9200:9200"
