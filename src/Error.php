@@ -9,20 +9,21 @@ class Error extends \RuntimeException
     /**
      * @var array|null
      */
-    private $data;
+    private ?array $data;
 
     /**
      * Error constructor.
-     * @param string $errorJson
+     * @param string|null $errorJson
      * @param int $code
+     * @param \Throwable|null $previous
      */
-    public function __construct(?string $errorJson, int $code)
+    public function __construct(?string $errorJson, int $code, \Throwable $previous = null)
     {
         $message = 'An error occurred. Response code: ' . $code;
         if ($errorJson) {
             $this->data = json_decode($errorJson, true);
         }
-        parent::__construct($message, $code);
+        parent::__construct($message, $code, $previous);
     }
 
     /**
