@@ -22,12 +22,9 @@ class Client
      */
     private $httpClient;
 
-    public function __construct(string $baseUri, HttpClient $httpClient = null)
+    public function __construct(string $baseUri)
     {
         $this->httpClient = HttpClientBuilder::buildDefault();
-        if ($httpClient) {
-            $this->httpClient = $httpClient;
-        }
         $this->baseUri = rtrim($baseUri, '/');
     }
 
