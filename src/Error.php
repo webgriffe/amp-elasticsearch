@@ -9,7 +9,7 @@ class Error extends \RuntimeException
     /**
      * @var array|null
      */
-    private ?array $data;
+    private ?array $data = null;
 
     /**
      * Error constructor.
