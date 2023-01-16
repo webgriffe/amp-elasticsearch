@@ -22,10 +22,28 @@ class Client
      */
     private HttpClient $httpClient;
 
+    /**
+     * @var float
+     */
+    private float $timeout = 10;
+
+    /**
+     * @param string $baseUri
+     * @param HttpClient|null $httpClient
+     */
     public function __construct(string $baseUri, HttpClient $httpClient = null)
     {
         $this->httpClient = $httpClient ?: HttpClientBuilder::buildDefault();
         $this->baseUri = rtrim($baseUri, '/');
+    }
+
+    /**
+     * @param float $timeout
+     * @return void
+     */
+    public function setTimeout(float $timeout): void
+    {
+        $this->timeout = $timeout;
     }
 
     /**
@@ -45,14 +63,76 @@ class Client
     /**
      * @param string $index
      * @param Cancellation|null $cancellation
-     * @return array|null
+     * @return bool
      * @throws Error
      */
-    public function existsIndex(string $index, ?Cancellation $cancellation = null): ?array
+    public function existsIndex(string $index, ?Cancellation $cancellation = null): bool
     {
-        $method = 'HEAD';
-        $uri = implode('/', [$this->baseUri, urlencode($index)]);
-        return $this->doJsonRequest($method, $uri, $cancellation);
+        try {
+            $this->doJsonRequest('HEAD', implode('/', [$this->baseUri, urlencode($index)]), $cancellation);
+            return true;
+        } catch (Error $e) {
+            if ($e->getCode() == 404) {
+                return false;
+            } else {
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * @param string $name
+     * @param Cancellation|null $cancellation
+     * @return bool
+     * @throws Error
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-alias-exists.html
+     */
+    public function existsAlias(string $name, ?Cancellation $cancellation = null): bool
+    {
+        try {
+            $this->doJsonRequest('HEAD', implode('/', [$this->baseUri, '_alias', urlencode($name)]), $cancellation);
+            return true;
+        } catch (Error $e) {
+            if ($e->getCode() == 404) {
+                return false;
+            } else {
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * @param array $actions
+     * @param Cancellation|null $cancellation
+     * @example $client->aliases([
+     *   ['add'    => ['index' => 'logs-2013-07', 'alias' => 'current-month']],
+     *   ['remove' => ['index' => 'logs-2013-06', 'alias' => 'current-month']],
+     * ]);
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
+     */
+    public function aliases(array $actions, ?Cancellation $cancellation = null): void
+    {
+        $uri = implode('/', [$this->baseUri, '_aliases']);
+        $this->doRequest($this->createJsonRequest('POST', $uri, json_encode(['actions' => $actions], JSON_UNESCAPED_UNICODE)), $cancellation);
+    }
+
+    /**
+     * @param string $index
+     * @param Cancellation|null $cancellation
+     * @return array
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-alias.html
+     */
+    public function getIndexAliases(string $index, ?Cancellation $cancellation = null): array
+    {
+        try {
+            return array_keys($this->doJsonRequest('GET', implode('/', [$this->baseUri, '_alias', urlencode($index)]), $cancellation));
+        } catch (Error $e) {
+            if ($e->getCode() == 404) {
+                return [];
+            } else {
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -153,14 +233,21 @@ class Client
      * @param string $id
      * @param string $type
      * @param Cancellation|null $cancellation
-     * @return array|null
+     * @return bool
      * @throws Error
      */
-    public function existsDocument(string $index, string $id, string $type = '_doc', ?Cancellation $cancellation = null): ?array
+    public function existsDocument(string $index, string $id, string $type = '_doc', ?Cancellation $cancellation = null): bool
     {
-        $method = 'HEAD';
-        $uri = implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]);
-        return $this->doJsonRequest($method, $uri, $cancellation);
+        try {
+            $this->doJsonRequest('HEAD', implode('/', [$this->baseUri, urlencode($index), urlencode($type), urlencode($id)]), $cancellation);
+            return true;
+        } catch (Error $e) {
+            if ($e->getCode() == 404) {
+                return false;
+            } else {
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -299,6 +386,38 @@ class Client
     }
 
     /**
+     * @param array $body
+     * @param array $options
+     * @param Cancellation|null $cancellation
+     * @return array|null
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html
+     */
+    public function reindex(array $body = [], array $options = [], ?Cancellation $cancellation = null): ?array
+    {
+        $uri = implode('/', [$this->baseUri, '_reindex']);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest($this->createJsonRequest('POST', $uri, json_encode($body)), $cancellation);
+    }
+
+    /**
+     * @param string $task_id
+     * @param array $options
+     * @param Cancellation|null $cancellation
+     * @return array|null
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/tasks.html
+     */
+    public function getTask(string $task_id, array $options = [], ?Cancellation $cancellation = null): ?array
+    {
+        $uri = implode('/', [$this->baseUri, '_tasks', $task_id]);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doJsonRequest('GET', $uri, $cancellation);
+    }
+
+    /**
      * @param array $query
      * @param string|null $indexOrIndices
      * @param array $options
@@ -405,6 +524,10 @@ class Client
         $request->setHeader('Accept', 'application/json');
         $request->setBodySizeLimit(15000000);
         $request->setHeaderSizeLimit(32768);
+        $request->setInactivityTimeout($this->timeout);
+        $request->setTransferTimeout($this->timeout);
+        $request->setTcpConnectTimeout($this->timeout);
+        $request->setTlsHandshakeTimeout($this->timeout);
 
         if ($body) {
             $request->setBody($body);

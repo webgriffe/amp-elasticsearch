@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Webgriffe\AmpElasticsearch\Tests\Integration;
 
 use Webgriffe\AmpElasticsearch\Client;
-use Webgriffe\AmpElasticsearch\Error;
 use PHPUnit\Framework\TestCase;
 use function Amp\delay;
 
@@ -20,9 +19,11 @@ class ClientTest extends TestCase
     {
         $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
         $this->client = new Client($esUrl);
-        $indices = $this->client->catIndices();
-        foreach ($indices as $index) {
-            $this->client->deleteIndex($index['index']);
+        foreach ([self::TEST_INDEX, 'test_another_index', 'test_an_index'] as $index) {
+            try {
+                $this->client->deleteIndex($index);
+            } catch (\Throwable $e) {
+            }
         }
     }
 
@@ -36,16 +37,13 @@ class ClientTest extends TestCase
 
     public function testIndicesExistsShouldThrow404ErrorIfIndexDoesNotExists(): void
     {
-        $this->expectException(Error::class);
-        $this->expectExceptionCode(404);
-        $this->client->existsIndex(self::TEST_INDEX);
+        $this->assertFalse($this->client->existsIndex(self::TEST_INDEX));
     }
 
     public function testIndicesExistsShouldNotThrowAnErrorIfIndexExists(): void
     {
         $this->client->createIndex(self::TEST_INDEX);
-        $response = $this->client->existsIndex(self::TEST_INDEX);
-        $this->assertNull($response);
+        $this->assertTrue($this->client->existsIndex(self::TEST_INDEX));
     }
 
     public function testDocumentsIndex(): void
@@ -66,16 +64,13 @@ class ClientTest extends TestCase
     public function testDocumentsExistsShouldThrowA404ErrorIfDocumentDoesNotExists(): void
     {
         $this->client->createIndex(self::TEST_INDEX);
-        $this->expectException(Error::class);
-        $this->expectExceptionCode(404);
-        $this->client->existsDocument(self::TEST_INDEX, 'not-existent-doc');
+        $this->assertFalse($this->client->existsDocument(self::TEST_INDEX, 'not-existent-doc'));
     }
 
     public function testDocumentsExistsShouldNotThrowAnErrorIfDocumentExists(): void
     {
         $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
-        $response = $this->client->existsDocument(self::TEST_INDEX, 'my_id');
-        $this->assertNull($response);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
     }
 
     public function testDocumentsGet(): void
@@ -155,21 +150,21 @@ class ClientTest extends TestCase
     public function testCatIndices(): void
     {
         $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
-        $response = $this->client->catIndices();
+        $response = $this->client->catIndices('test_*');
         $this->assertCount(1, $response);
         $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
     }
 
     public function testCatIndicesWithoutIndices(): void
     {
-        $response = $this->client->catIndices();
+        $response = $this->client->catIndices('test_*');
         $this->assertCount(0, $response);
     }
 
     public function testCatIndicesWithSpecificIndex(): void
     {
         $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
-        $this->client->indexDocument('another_index', 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $this->client->indexDocument('test_another_index', 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
         $response = $this->client->catIndices(self::TEST_INDEX);
         $this->assertCount(1, $response);
         $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
@@ -191,9 +186,9 @@ class ClientTest extends TestCase
 
     public function testRefreshManyIndices(): void
     {
-        $this->client->createIndex('an_index');
-        $this->client->createIndex('another_index');
-        $response = $this->client->refresh('an_index,another_index');
+        $this->client->createIndex('test_an_index');
+        $this->client->createIndex('test_another_index');
+        $response = $this->client->refresh('test_an_index,test_another_index');
         $this->assertCount(1, $response);
     }
 
@@ -280,7 +275,7 @@ class ClientTest extends TestCase
         $responses = [];
         for ($i = 1; $i <= 1234; $i++) {
             $body[] = ['index' => ['_id' => $i, '_type' => '_doc']];
-            $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' .  $i];
+            $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' . $i];
 
             // Every 100 documents stop and send the bulk request
             if ($i % 100 === 0) {
@@ -295,5 +290,59 @@ class ClientTest extends TestCase
 
         $this->assertIsArray($responses);
         $this->assertCount(34, $responses['items']);
+    }
+
+    public function testAliasExists(): void
+    {
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+    }
+
+    public function testCreateAlias(): void
+    {
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+
+        $this->client->createIndex('test_another_index');
+        $this->client->aliases([
+            ['add' => ['index' => 'test_another_index', 'alias' => self::TEST_INDEX]],
+        ]);
+        $this->assertTrue($this->client->existsAlias(self::TEST_INDEX));
+    }
+
+    public function testAliases(): void
+    {
+        $this->client->createIndex('test_another_index');
+        $this->client->createIndex('test_an_index');
+        $this->client->aliases([
+            ['add' => ['index' => 'test_another_index', 'alias' => self::TEST_INDEX]],
+            ['add' => ['index' => 'test_an_index', 'alias' => self::TEST_INDEX]],
+        ]);
+
+        $this->assertEquals(['test_an_index', 'test_another_index'], $this->client->getIndexAliases(self::TEST_INDEX));
+    }
+
+    public function testReindex(): void
+    {
+        $this->client->createIndex('test_another_index');
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => '']);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
+        $this->assertFalse($this->client->existsDocument('test_another_index', 'my_id'));
+
+        $result = $this->client->reindex([
+            'conflicts' => 'proceed',
+            'source' => [
+                'index' => self::TEST_INDEX,
+            ],
+            'dest' => [
+                'index' => 'test_another_index',
+                'op_type' => 'create',
+            ],
+        ], ['refresh' => '']);
+        $this->assertNotNull($result);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
+        $this->assertTrue($this->client->existsDocument('test_another_index', 'my_id'));
     }
 }
