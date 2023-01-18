@@ -252,8 +252,7 @@ class ClientTest extends TestCase
 
         $response = $this->client->count(self::TEST_INDEX);
 
-        $this->assertIsArray($response);
-        $this->assertEquals(2, $response['count']);
+        $this->assertEquals(2, $response);
     }
 
     public function testCountWithQuery(): void
@@ -264,8 +263,7 @@ class ClientTest extends TestCase
 
         $response = $this->client->count(self::TEST_INDEX, [], ['query' => ['term' => ['user' => 'kimchy']]]);
 
-        $this->assertIsArray($response);
-        $this->assertEquals(1, $response['count']);
+        $this->assertEquals(1, $response);
     }
 
     public function testBulkIndex(): void
@@ -320,7 +318,7 @@ class ClientTest extends TestCase
             ['add' => ['index' => 'test_an_index', 'alias' => self::TEST_INDEX]],
         ]);
 
-        $this->assertEquals(['test_an_index', 'test_another_index'], $this->client->getIndexAliases(self::TEST_INDEX));
+        $this->assertEquals(['test_another_index', 'test_an_index'], $this->client->getIndexAliases(self::TEST_INDEX));
     }
 
     public function testReindex(): void

@@ -102,6 +102,28 @@ class Client
     }
 
     /**
+     * @param string $name
+     * @param Cancellation|null $cancellation
+     * @throws Error
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-open-close.html
+     */
+    public function openIndex(string $name, ?Cancellation $cancellation = null): void
+    {
+        $this->doJsonRequest('POST', implode('/', [$this->baseUri, urlencode($name), '_open']), $cancellation);
+    }
+
+    /**
+     * @param string $name
+     * @param Cancellation|null $cancellation
+     * @throws Error
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-open-close.html
+     */
+    public function closeIndex(string $name, ?Cancellation $cancellation = null): void
+    {
+        $this->doJsonRequest('POST', implode('/', [$this->baseUri, urlencode($name), '_close']), $cancellation);
+    }
+
+    /**
      * @param array $actions
      * @param Cancellation|null $cancellation
      * @example $client->aliases([
@@ -184,14 +206,25 @@ class Client
      * @param string $index
      * @param array $properties
      * @param Cancellation|null $cancellation
-     * @return array|null
      * @throws Error
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-mapping.html
      */
-    public function putMapping(string $index, array $properties, ?Cancellation $cancellation = null): ?array
+    public function putMapping(string $index, array $properties, ?Cancellation $cancellation = null): void
     {
         $uri = implode('/', [$this->baseUri, urlencode($index), '_mapping']);
-        return $this->doRequest($this->createJsonRequest('PUT', $uri, json_encode(['properties' => $properties], JSON_UNESCAPED_UNICODE)), $cancellation);
+        $this->doRequest($this->createJsonRequest('PUT', $uri, json_encode(['properties' => $properties], JSON_UNESCAPED_UNICODE)), $cancellation);
+    }
+
+    /**
+     * @param string $index
+     * @param array $body
+     * @param Cancellation|null $cancellation
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-update-settings.html
+     */
+    public function putSettings(string $index, array $body, ?Cancellation $cancellation = null): void
+    {
+        $uri = implode('/', [$this->baseUri, urlencode($index), '_settings']);
+        $this->doRequest($this->createJsonRequest('PUT', $uri, json_encode($body, JSON_UNESCAPED_UNICODE)), $cancellation);
     }
 
     /**
@@ -445,10 +478,10 @@ class Client
      * @param array $options
      * @param array|null $query
      * @param Cancellation|null $cancellation
-     * @return array|null
+     * @return int
      * @throws Error
      */
-    public function count(string $index, array $options = [], array $query = null, ?Cancellation $cancellation = null): ?array
+    public function count(string $index, array $options = [], array $query = null, ?Cancellation $cancellation = null): int
     {
         $method = 'GET';
         $uri = [$this->baseUri, $index];
@@ -457,10 +490,8 @@ class Client
         if ($options) {
             $uri .= '?' . http_build_query($options);
         }
-        if (null !== $query) {
-            return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($query)), $cancellation);
-        }
-        return $this->doRequest($this->createJsonRequest($method, $uri), $cancellation);
+        $result = $this->doRequest($this->createJsonRequest($method, $uri, $query ? json_encode($query) : null), $cancellation);
+        return $result['count'];
     }
 
     /**
