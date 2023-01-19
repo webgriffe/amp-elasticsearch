@@ -343,4 +343,26 @@ class ClientTest extends TestCase
         $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
         $this->assertTrue($this->client->existsDocument('test_another_index', 'my_id'));
     }
+
+    public function testScroll(): void
+    {
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, '1', ['testField' => 'abc'], ['refresh' => '']);
+        $this->client->indexDocument(self::TEST_INDEX, '2', ['testField' => 'def'], ['refresh' => '']);
+        $result = [];
+
+        $response = $this->client->search(['query' => ['match_all' => new \stdClass()], 'size' => 1], self::TEST_INDEX, ['scroll' => '1m']);
+        $this->assertCount(1, $response['hits']['hits']);
+
+        while (count($response['hits']['hits']) > 0) {
+            $result = array_merge($result, $response['hits']['hits']);
+            if (empty($response['_scroll_id'])) {
+                break;
+            } else {
+                $response = $this->client->scroll($response['_scroll_id']);
+            }
+        }
+
+        $this->assertCount(2, $result);
+    }
 }
