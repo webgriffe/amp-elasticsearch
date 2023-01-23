@@ -318,7 +318,12 @@ class ClientTest extends TestCase
             ['add' => ['index' => 'test_an_index', 'alias' => self::TEST_INDEX]],
         ]);
 
-        $this->assertEquals(['test_another_index', 'test_an_index'], $this->client->getIndexAliases(self::TEST_INDEX));
+        $assert = ['test_another_index', 'test_an_index'];
+        sort($assert);
+        $result = $this->client->getIndexAliases(self::TEST_INDEX);
+        sort($result);
+
+        $this->assertEquals($assert, $result);
     }
 
     public function testReindex(): void
