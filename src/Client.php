@@ -475,14 +475,15 @@ class Client
 
     /**
      * @param string $scroll_id
+     * @param string $scroll
      * @param Cancellation|null $cancellation
      * @return array|null
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
      */
-    public function scroll(string $scroll_id, ?Cancellation $cancellation = null): ?array
+    public function scroll(string $scroll_id, string $scroll = '1m', ?Cancellation $cancellation = null): ?array
     {
         $uri = [$this->baseUri, '_search', 'scroll'];
-        return $this->doRequest($this->createJsonRequest('POST', implode('/', $uri), json_encode(['scroll_id' => $scroll_id])), $cancellation);
+        return $this->doRequest($this->createJsonRequest('POST', implode('/', $uri), json_encode(['scroll_id' => $scroll_id, 'scroll' => $scroll])), $cancellation);
     }
 
     /**
