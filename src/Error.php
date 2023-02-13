@@ -19,7 +19,7 @@ class Error extends \RuntimeException
      */
     public function __construct(?string $errorJson, int $code, \Throwable $previous = null)
     {
-        $message = 'An error occurred. Response code: ' . $code . PHP_EOL . substr($errorJson, 0, 200);
+        $message = 'An error occurred. Response code: ' . $code . PHP_EOL . substr($errorJson ?: '', 0, 200);
         if ($errorJson) {
             $this->data = json_decode($errorJson, true);
         }
