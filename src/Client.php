@@ -592,7 +592,7 @@ class Client
             $body = $response->getBody()->buffer();
             $statusClass = (int)($response->getStatus() / 100);
             if ($statusClass !== 2) {
-                throw new Error($body, $response->getStatus());
+                throw new Error($body, $response->getStatus(), null, $request->getBody()->createBodyStream()->read());
             }
             return json_decode($body, true);
         } catch (BufferException|StreamException $e) {
