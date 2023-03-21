@@ -103,24 +103,32 @@ class Client
 
     /**
      * @param string $name
+     * @param array $options
      * @param Cancellation|null $cancellation
-     * @throws Error
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-open-close.html
      */
-    public function openIndex(string $name, ?Cancellation $cancellation = null): void
+    public function openIndex(string $name, array $options = [], ?Cancellation $cancellation = null): void
     {
-        $this->doJsonRequest('POST', implode('/', [$this->baseUri, urlencode($name), '_open']), $cancellation);
+        $uri = implode('/', [$this->baseUri, urlencode($name), '_open']);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        $this->doJsonRequest('POST', $uri, $cancellation);
     }
 
     /**
      * @param string $name
+     * @param array $options
      * @param Cancellation|null $cancellation
-     * @throws Error
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-open-close.html
      */
-    public function closeIndex(string $name, ?Cancellation $cancellation = null): void
+    public function closeIndex(string $name, array $options = [], ?Cancellation $cancellation = null): void
     {
-        $this->doJsonRequest('POST', implode('/', [$this->baseUri, urlencode($name), '_close']), $cancellation);
+        $uri = implode('/', [$this->baseUri, urlencode($name), '_close']);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        $this->doJsonRequest('POST', $uri, $cancellation);
     }
 
     /**
