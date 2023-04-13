@@ -9,6 +9,7 @@ use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 
 class Client
@@ -600,10 +601,10 @@ class Client
             $body = $response->getBody()->buffer();
             $statusClass = (int)($response->getStatus() / 100);
             if ($statusClass !== 2) {
-                throw new Error($body, $response->getStatus(), null, $request->getBody()->createBodyStream()->read());
+                throw new Error($body, $response->getStatus(), null, $request->getBody()->getContent()->read());
             }
             return json_decode($body, true);
-        } catch (BufferException|StreamException $e) {
+        } catch (HttpException|StreamException $e) {
             throw new Error(null, 500, $e);
         }
     }
