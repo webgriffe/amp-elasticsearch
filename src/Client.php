@@ -7,6 +7,7 @@ namespace Webgriffe\AmpElasticsearch;
 use Amp\ByteStream\BufferException;
 use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
+use Amp\Http\Client\Connection\UnprocessedRequestException;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
@@ -604,6 +605,8 @@ class Client
                 throw new Error($body, $response->getStatus(), null, $request->getBody()->getContent()->read());
             }
             return json_decode($body, true);
+        } catch (UnprocessedRequestException $e) {
+            throw new Error(null, 500, $e->getPrevious());
         } catch (HttpException|StreamException $e) {
             throw new Error(null, 500, $e);
         }
