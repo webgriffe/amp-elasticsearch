@@ -51,14 +51,17 @@ class Client
     /**
      * @param string $index
      * @param array|null $properties
+     * @param array $options
      * @param Cancellation|null $cancellation
      * @return array|null
-     * @throws Error
      */
-    public function createIndex(string $index, ?array $properties = null, ?Cancellation $cancellation = null): ?array
+    public function createIndex(string $index, ?array $properties = null, array $options = [], ?Cancellation $cancellation = null): ?array
     {
         $method = 'PUT';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
         return $this->doRequest($this->createJsonRequest($method, $uri, $properties ? json_encode($properties, JSON_UNESCAPED_UNICODE) : null), $cancellation);
     }
 
