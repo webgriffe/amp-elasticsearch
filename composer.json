@@ -8,7 +8,6 @@
         "amphp/http-client": "^v5.0",
         "amphp/amp": "^v3.0"
     },
-    "minimum-stability": "beta",
     "autoload": {
         "psr-4": {
             "Webgriffe\\AmpElasticsearch\\": "src/"

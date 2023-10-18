@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Webgriffe\AmpElasticsearch;
 
-use Amp\ByteStream\BufferException;
 use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
-use Amp\Http\Client\Connection\UnprocessedRequestException;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
@@ -552,6 +550,7 @@ class Client
      * @param Cancellation|null $cancellation
      * @return array|null
      * @throws Error
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update-by-query.html
      */
     public function updateByQuery(array $body, ?string $indexOrIndices = null, array $options = [], ?Cancellation $cancellation = null): ?array
     {
@@ -561,6 +560,30 @@ class Client
             $uri[] = urlencode($indexOrIndices);
         }
         $uri[] = '_update_by_query';
+        $uri = implode('/', $uri);
+        if ($options) {
+            $uri .= '?' . http_build_query($options);
+        }
+        return $this->doRequest($this->createJsonRequest($method, $uri, json_encode($body)), $cancellation);
+    }
+
+    /**
+     * @param array $body
+     * @param string|null $indexOrIndices
+     * @param array $options
+     * @param Cancellation|null $cancellation
+     * @return array|null
+     * @throws Error
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-delete-by-query.html
+     */
+    public function deleteByQuery(array $body, ?string $indexOrIndices = null, array $options = [], ?Cancellation $cancellation = null): ?array
+    {
+        $method = 'POST';
+        $uri = [$this->baseUri];
+        if ($indexOrIndices) {
+            $uri[] = urlencode($indexOrIndices);
+        }
+        $uri[] = '_delete_by_query';
         $uri = implode('/', $uri);
         if ($options) {
             $uri .= '?' . http_build_query($options);
@@ -608,8 +631,6 @@ class Client
                 throw new Error($body, $response->getStatus(), null, $request->getBody()->getContent()->read());
             }
             return json_decode($body, true);
-        } catch (UnprocessedRequestException $e) {
-            throw new Error(null, 500, $e->getPrevious());
         } catch (HttpException|StreamException $e) {
             throw new Error(null, 500, $e);
         }

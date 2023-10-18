@@ -6,7 +6,6 @@ namespace Webgriffe\AmpElasticsearch\Tests\Integration;
 
 use Webgriffe\AmpElasticsearch\Client;
 use PHPUnit\Framework\TestCase;
-use function Amp\delay;
 
 class ClientTest extends TestCase
 {
@@ -230,7 +229,7 @@ class ClientTest extends TestCase
                 ]
             ]
         ];
-        $response = $this->client->search($query);
+        $response = $this->client->search($query, self::TEST_INDEX);
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
         $this->assertEquals('1', $response['hits']['hits'][0]['_source']['payload']);
@@ -238,10 +237,20 @@ class ClientTest extends TestCase
         $this->client->updateByQuery(array_merge($query, ['script' => [
             'source' => 'ctx._source[\'payload\'] = \'2\'',
             'lang' => 'painless',
-        ]]), self::TEST_INDEX, ['conflicts' => 'proceed']);
-        delay(1);
+        ]]), self::TEST_INDEX, ['conflicts' => 'proceed', 'refresh' => 'true']);
         $response = $this->client->search($query);
         $this->assertEquals('2', $response['hits']['hits'][0]['_source']['payload']);
+    }
+
+    public function testDeleteByQuery(): void
+    {
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => '1'], ['refresh' => 'true']);
+
+        $this->assertEquals(1, $this->client->count(self::TEST_INDEX));
+
+        $this->client->deleteByQuery(['query' => ['match_all' => new \stdClass]], self::TEST_INDEX, ['refresh' => 'true']);
+        $this->assertEquals(0, $this->client->count(self::TEST_INDEX));
     }
 
     public function testCount(): void
