@@ -7,8 +7,7 @@ concurrency framework.
 
 **Required PHP Version**
 
-- PHP 7.4
-- PHP 8.0
+- PHP 8.1+
 
 **Installation**
 
@@ -21,12 +20,10 @@ composer require webgriffe/amp-elasticsearch
 Just create a client instance and call its public methods which returns promises:
 
 ```php
-Loop::run(function () {
-  $client = new Webgriffe\AmpElasticsearch\Client('http://my.elasticsearch.test:9200');
-  yield $this->client->createIndex('myindex');
-  $response = yield $this->client->indexDocument('myindex', '', ['testField' => 'abc']);
-  echo $response['result']; // 'created'
-});
+$client = new Webgriffe\AmpElasticsearch\Client('http://my.elasticsearch.test:9200');
+$client->createIndex('myindex');
+$response = $client->indexDocument('myindex', '', ['testField' => 'abc']);
+echo $response['result']; // 'created'
 ```
 
 See other usage examples in the [`tests/Integration/ClientTest.php`](./tests/Integration/ClientTest.php).

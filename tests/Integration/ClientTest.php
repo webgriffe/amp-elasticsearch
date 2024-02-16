@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Webgriffe\AmpElasticsearch\Tests\Integration;
 
 use Webgriffe\AmpElasticsearch\Client;
-use Webgriffe\AmpElasticsearch\Error;
-use Amp\Promise;
 use PHPUnit\Framework\TestCase;
 
 class ClientTest extends TestCase
@@ -14,24 +12,23 @@ class ClientTest extends TestCase
     const TEST_INDEX = 'test_index';
     const DEFAULT_ES_URL = 'http://127.0.0.1:9200';
 
-    /**
-     * @var Client
-     */
-    private $client;
+    private Client $client;
 
     protected function setUp(): void
     {
         $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
         $this->client = new Client($esUrl);
-        $indices = Promise\wait($this->client->catIndices());
-        foreach ($indices as $index) {
-            Promise\wait($this->client->deleteIndex($index['index']));
+        foreach ([self::TEST_INDEX, 'test_another_index', 'test_an_index'] as $index) {
+            try {
+                $this->client->deleteIndex($index);
+            } catch (\Throwable $e) {
+            }
         }
     }
 
     public function testCreateIndex(): void
     {
-        $response = Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $response = $this->client->createIndex(self::TEST_INDEX);
         $this->assertIsArray($response);
         $this->assertTrue($response['acknowledged']);
         $this->assertEquals(self::TEST_INDEX, $response['index']);
@@ -39,28 +36,25 @@ class ClientTest extends TestCase
 
     public function testIndicesExistsShouldThrow404ErrorIfIndexDoesNotExists(): void
     {
-        $this->expectException(Error::class);
-        $this->expectExceptionCode(404);
-        Promise\wait($this->client->existsIndex(self::TEST_INDEX));
+        $this->assertFalse($this->client->existsIndex(self::TEST_INDEX));
     }
 
     public function testIndicesExistsShouldNotThrowAnErrorIfIndexExists(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        $response = Promise\wait($this->client->existsIndex(self::TEST_INDEX));
-        $this->assertNull($response);
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->assertTrue($this->client->existsIndex(self::TEST_INDEX));
     }
 
     public function testDocumentsIndex(): void
     {
-        $response = Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
+        $response = $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
         $this->assertIsArray($response);
         $this->assertEquals(self::TEST_INDEX, $response['_index']);
     }
 
     public function testDocumentsIndexWithAutomaticIdCreation(): void
     {
-        $response = Promise\wait($this->client->indexDocument(self::TEST_INDEX, '', ['testField' => 'abc']));
+        $response = $this->client->indexDocument(self::TEST_INDEX, '', ['testField' => 'abc']);
         $this->assertIsArray($response);
         $this->assertEquals(self::TEST_INDEX, $response['_index']);
         $this->assertEquals('created', $response['result']);
@@ -68,23 +62,20 @@ class ClientTest extends TestCase
 
     public function testDocumentsExistsShouldThrowA404ErrorIfDocumentDoesNotExists(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        $this->expectException(Error::class);
-        $this->expectExceptionCode(404);
-        Promise\wait($this->client->existsDocument(self::TEST_INDEX, 'not-existent-doc'));
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->assertFalse($this->client->existsDocument(self::TEST_INDEX, 'not-existent-doc'));
     }
 
     public function testDocumentsExistsShouldNotThrowAnErrorIfDocumentExists(): void
     {
-        Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
-        $this->assertNull($response);
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
     }
 
     public function testDocumentsGet(): void
     {
-        Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->getDocument(self::TEST_INDEX, 'my_id'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
+        $response = $this->client->getDocument(self::TEST_INDEX, 'my_id');
         $this->assertIsArray($response);
         $this->assertTrue($response['found']);
         $this->assertEquals('my_id', $response['_id']);
@@ -93,8 +84,8 @@ class ClientTest extends TestCase
 
     public function testDocumentsGetWithOptions(): void
     {
-        Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->getDocument(self::TEST_INDEX, 'my_id', ['_source' => 'false']));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
+        $response = $this->client->getDocument(self::TEST_INDEX, 'my_id', ['_source' => 'false']);
         $this->assertIsArray($response);
         $this->assertTrue($response['found']);
         $this->assertArrayNotHasKey('_source', $response);
@@ -102,198 +93,290 @@ class ClientTest extends TestCase
 
     public function testDocumentsGetWithOnlySource(): void
     {
-        Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->getDocument(self::TEST_INDEX, 'my_id', [], '_source'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
+        $response = $this->client->getDocument(self::TEST_INDEX, 'my_id', []);
         $this->assertIsArray($response);
-        $this->assertEquals('abc', $response['testField']);
+        $this->assertEquals('abc', $response['_source']['testField']);
     }
 
     public function testDocumentsDelete(): void
     {
-        Promise\wait($this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']));
-        $response = Promise\wait($this->client->deleteDocument(self::TEST_INDEX, 'my_id'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc']);
+        $response = $this->client->deleteDocument(self::TEST_INDEX, 'my_id');
         $this->assertIsArray($response);
         $this->assertEquals('deleted', $response['result']);
     }
 
     public function testUriSearchOneIndex(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->uriSearchOneIndex(self::TEST_INDEX, 'testField:abc'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->uriSearchOneIndex(self::TEST_INDEX, 'testField:abc');
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
 
     public function testUriSearchAllIndices(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->uriSearchAllIndices('testField:abc'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->uriSearchAllIndices('testField:abc');
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
 
     public function testUriSearchManyIndices(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->uriSearchManyIndices([self::TEST_INDEX], 'testField:abc'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->uriSearchManyIndices([self::TEST_INDEX], 'testField:abc');
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
 
     public function testStatsIndexWithAllMetric(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->statsIndex(self::TEST_INDEX));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->statsIndex(self::TEST_INDEX);
         $this->assertEquals(1, $response['indices'][self::TEST_INDEX]['total']['indexing']['index_total']);
     }
 
     public function testStatsIndexWithDocsMetric(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->statsIndex(self::TEST_INDEX, 'docs'));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->statsIndex(self::TEST_INDEX, 'docs');
         $this->assertArrayNotHasKey('indexing', $response['indices'][self::TEST_INDEX]['total']);
         $this->assertEquals(1, $response['indices'][self::TEST_INDEX]['total']['docs']['count']);
     }
 
     public function testCatIndices(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->catIndices());
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->catIndices('test_*');
         $this->assertCount(1, $response);
         $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
     }
 
     public function testCatIndicesWithoutIndices(): void
     {
-        $response = Promise\wait($this->client->catIndices());
+        $response = $this->client->catIndices('test_*');
         $this->assertCount(0, $response);
     }
 
     public function testCatIndicesWithSpecificIndex(): void
     {
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        Promise\wait(
-            $this->client->indexDocument('another_index', 'my_id', ['testField' => 'abc'], ['refresh' => 'true'])
-        );
-        $response = Promise\wait($this->client->catIndices(self::TEST_INDEX));
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $this->client->indexDocument('test_another_index', 'my_id', ['testField' => 'abc'], ['refresh' => 'true']);
+        $response = $this->client->catIndices(self::TEST_INDEX);
         $this->assertCount(1, $response);
         $this->assertEquals(self::TEST_INDEX, $response[0]['index']);
     }
 
     public function testCatHealth(): void
     {
-        $response = Promise\wait($this->client->catHealth());
+        $response = $this->client->catHealth();
         $this->assertCount(1, $response);
         $this->assertArrayHasKey('status', $response[0]);
     }
 
     public function testRefreshOneIndex(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        $response = Promise\wait($this->client->refresh(self::TEST_INDEX));
+        $this->client->createIndex(self::TEST_INDEX);
+        $response = $this->client->refresh(self::TEST_INDEX);
         $this->assertCount(1, $response);
     }
 
     public function testRefreshManyIndices(): void
     {
-        Promise\wait($this->client->createIndex('an_index'));
-        Promise\wait($this->client->createIndex('another_index'));
-        $response = Promise\wait($this->client->refresh('an_index,another_index'));
+        $this->client->createIndex('test_an_index');
+        $this->client->createIndex('test_another_index');
+        $response = $this->client->refresh('test_an_index,test_another_index');
         $this->assertCount(1, $response);
     }
 
     public function testRefreshAllIndices(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        $response = Promise\wait($this->client->refresh());
+        $this->client->createIndex(self::TEST_INDEX);
+        $response = $this->client->refresh();
         $this->assertCount(1, $response);
     }
 
     public function testSearch(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => []], ['refresh' => 'true'])
-        );
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => []], ['refresh' => 'true']);
         $query = [
-            'term' => [
-                'uuid.keyword' => [
-                    'value' => 'this-is-a-uuid'
+            'query' => [
+                'term' => [
+                    'uuid.keyword' => [
+                        'value' => 'this-is-a-uuid'
+                    ]
                 ]
             ]
         ];
-        $response = Promise\wait($this->client->search($query));
+        $response = $this->client->search($query);
         $this->assertIsArray($response);
         $this->assertCount(1, $response['hits']['hits']);
     }
 
+    public function testUpdateByQuery(): void
+    {
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => '1'], ['refresh' => 'true']);
+        $query = [
+            'query' => [
+                'term' => [
+                    'uuid.keyword' => [
+                        'value' => 'this-is-a-uuid'
+                    ]
+                ]
+            ]
+        ];
+        $response = $this->client->search($query, self::TEST_INDEX);
+        $this->assertIsArray($response);
+        $this->assertCount(1, $response['hits']['hits']);
+        $this->assertEquals('1', $response['hits']['hits'][0]['_source']['payload']);
+
+        $this->client->updateByQuery(array_merge($query, ['script' => [
+            'source' => 'ctx._source[\'payload\'] = \'2\'',
+            'lang' => 'painless',
+        ]]), self::TEST_INDEX, ['conflicts' => 'proceed', 'refresh' => 'true']);
+        $response = $this->client->search($query);
+        $this->assertEquals('2', $response['hits']['hits'][0]['_source']['payload']);
+    }
+
+    public function testDeleteByQuery(): void
+    {
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => '1'], ['refresh' => 'true']);
+
+        $this->assertEquals(1, $this->client->count(self::TEST_INDEX));
+
+        $this->client->deleteByQuery(['query' => ['match_all' => new \stdClass]], self::TEST_INDEX, ['refresh' => 'true']);
+        $this->assertEquals(0, $this->client->count(self::TEST_INDEX));
+    }
+
     public function testCount(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true'])
-        );
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true'])
-        );
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true']);
+        $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true']);
 
-        $response = Promise\wait($this->client->count(self::TEST_INDEX));
+        $response = $this->client->count(self::TEST_INDEX);
 
-        $this->assertIsArray($response);
-        $this->assertEquals(2, $response['count']);
+        $this->assertEquals(2, $response);
     }
 
     public function testCountWithQuery(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'kimchy'], ['refresh' => 'true'])
-        );
-        Promise\wait(
-            $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'foo'], ['refresh' => 'true'])
-        );
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'kimchy'], ['refresh' => 'true']);
+        $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'foo'], ['refresh' => 'true']);
 
-        $response = Promise\wait($this->client->count(self::TEST_INDEX, [], ['term' => ['user' => 'kimchy']]));
+        $response = $this->client->count(self::TEST_INDEX, [], ['query' => ['term' => ['user' => 'kimchy']]]);
 
-        $this->assertIsArray($response);
-        $this->assertEquals(1, $response['count']);
+        $this->assertEquals(1, $response);
     }
 
     public function testBulkIndex(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $this->client->createIndex(self::TEST_INDEX);
         $body = [];
         $responses = [];
         for ($i = 1; $i <= 1234; $i++) {
-            $body[] = ['index' => ['_id' => '']];
-            $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' .  $i];
+            $body[] = ['index' => ['_id' => $i, '_type' => '_doc']];
+            $body[] = ['test' => 'bulk', 'my_field' => 'my_value_' . $i];
 
             // Every 100 documents stop and send the bulk request
             if ($i % 100 === 0) {
-                $responses = Promise\wait($this->client->bulk($body, self::TEST_INDEX));
+                $responses = $this->client->bulk($body, self::TEST_INDEX);
                 $body = [];
                 unset($responses);
             }
         }
         if (!empty($body)) {
-            $responses = Promise\wait($this->client->bulk($body, self::TEST_INDEX));
+            $responses = $this->client->bulk($body, self::TEST_INDEX);
         }
 
         $this->assertIsArray($responses);
         $this->assertCount(34, $responses['items']);
+    }
+
+    public function testAliasExists(): void
+    {
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+    }
+
+    public function testCreateAlias(): void
+    {
+        $this->assertFalse($this->client->existsAlias(self::TEST_INDEX));
+
+        $this->client->createIndex('test_another_index');
+        $this->client->aliases([
+            ['add' => ['index' => 'test_another_index', 'alias' => self::TEST_INDEX]],
+        ]);
+        $this->assertTrue($this->client->existsAlias(self::TEST_INDEX));
+    }
+
+    public function testAliases(): void
+    {
+        $this->client->createIndex('test_another_index');
+        $this->client->createIndex('test_an_index');
+        $this->client->aliases([
+            ['add' => ['index' => 'test_another_index', 'alias' => self::TEST_INDEX]],
+            ['add' => ['index' => 'test_an_index', 'alias' => self::TEST_INDEX]],
+        ]);
+
+        $assert = ['test_another_index', 'test_an_index'];
+        sort($assert);
+        $result = $this->client->getIndexAliases(self::TEST_INDEX);
+        sort($result);
+
+        $this->assertEquals($assert, $result);
+    }
+
+    public function testReindex(): void
+    {
+        $this->client->createIndex('test_another_index');
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, 'my_id', ['testField' => 'abc'], ['refresh' => '']);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
+        $this->assertFalse($this->client->existsDocument('test_another_index', 'my_id'));
+
+        $result = $this->client->reindex([
+            'conflicts' => 'proceed',
+            'source' => [
+                'index' => self::TEST_INDEX,
+            ],
+            'dest' => [
+                'index' => 'test_another_index',
+                'op_type' => 'create',
+            ],
+        ], ['refresh' => '']);
+        $this->assertNotNull($result);
+        $this->assertTrue($this->client->existsDocument(self::TEST_INDEX, 'my_id'));
+        $this->assertTrue($this->client->existsDocument('test_another_index', 'my_id'));
+    }
+
+    public function testScroll(): void
+    {
+        $this->client->createIndex(self::TEST_INDEX);
+        $this->client->indexDocument(self::TEST_INDEX, '1', ['testField' => 'abc'], ['refresh' => '']);
+        $this->client->indexDocument(self::TEST_INDEX, '2', ['testField' => 'def'], ['refresh' => '']);
+        $result = [];
+
+        $response = $this->client->search(['query' => ['match_all' => new \stdClass()], 'size' => 1], self::TEST_INDEX, ['scroll' => '1m']);
+        $this->assertCount(1, $response['hits']['hits']);
+
+        while (count($response['hits']['hits']) > 0) {
+            $result = array_merge($result, $response['hits']['hits']);
+            if (empty($response['_scroll_id'])) {
+                break;
+            } else {
+                $response = $this->client->scroll($response['_scroll_id']);
+            }
+        }
+
+        $this->assertCount(2, $result);
     }
 }
