@@ -11,7 +11,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                php: [ 7.4, 8.0 ]
+                php: [ 7.4, 8.0, 8.1, 8.2, 8.3 ]
 
         env:
             ES_URL: http://127.0.0.1:9200
@@ -30,6 +30,8 @@ jobs:
                     stack-version: 7.4.1
 
             -   uses: actions/checkout@v2
+                with:
+                    fetch-depth: 0 # This is needed for Roave BC check
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -58,11 +60,11 @@ jobs:
             -   name: PHPUnit tests
                 run: vendor/bin/phpunit tests
 
-    roave_bc_check:
-        name: Roave BC Check
-        runs-on: ubuntu-latest
+            - name: Install roave/backward-compatibility-check.
+              run: |
+                  # Install BC check tool in separate directory to avoid dependency conflicts 
+                  mkdir -p test-tools/bc-check
+                  composer require --working-dir="test-tools/bc-check" roave/backward-compatibility-check --no-plugins
 
-        steps:
-            -   uses: actions/checkout@v2
-            -   name: Roave BC Check
-                uses: docker://nyholm/roave-bc-check-ga
+            - name: Run roave/backward-compatibility-check.
+              run: test-tools/bc-check/vendor/bin/roave-backward-compatibility-check --format=github-actions
