@@ -3,7 +3,7 @@
 `webgriffe/amp-elasticsearch` is a non-blocking ElasticSearch client for use with the [`amp`](https://github.com/amphp/amp)
 concurrency framework.
 
-[![Build Status](https://github.com/webgriffe/amp-elasticsearch/workflows/Build/badge.svg)](https://github.com/webgriffe/amp-elasticsearch/actions)
+[![Build](https://github.com/webgriffe/amp-elasticsearch/actions/workflows/build.yml/badge.svg)](https://github.com/webgriffe/amp-elasticsearch/actions/workflows/build.yml)
 
 **Required PHP Version**
 
