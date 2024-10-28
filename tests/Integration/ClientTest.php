@@ -31,10 +31,40 @@ class ClientTest extends TestCase
 
     public function testCreateIndex(): void
     {
-        $response = Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $response = Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $this->assertIsArray($response);
         $this->assertTrue($response['acknowledged']);
         $this->assertEquals(self::TEST_INDEX, $response['index']);
+    }
+
+    public function testCreateIndexWithExplicitMapping(): void
+    {
+        $response = Promise\wait(
+            $this->client->createOrUpdateIndex(
+                self::TEST_INDEX,
+                ['mappings' => ['properties' => ['testField' => ['type' => 'text']]]]
+            )
+        );
+        $this->assertIsArray($response);
+        $this->assertTrue($response['acknowledged']);
+        $this->assertEquals(self::TEST_INDEX, $response['index']);
+        $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
+        $this->assertEquals('text', $response[self::TEST_INDEX]['mappings']['properties']['testField']['type']);
+    }
+
+    public function testCreateIndexWithExplicitSettings(): void
+    {
+        $response = Promise\wait(
+            $this->client->createOrUpdateIndex(
+                self::TEST_INDEX,
+                ['settings' => ['index' => ['mapping' => ['total_fields' => ['limit' => 2000]]]]]
+            )
+        );
+        $this->assertIsArray($response);
+        $this->assertTrue($response['acknowledged']);
+        $this->assertEquals(self::TEST_INDEX, $response['index']);
+        $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
+        $this->assertEquals(2000, $response[self::TEST_INDEX]['settings']['index']['mapping']['total_fields']['limit']);
     }
 
     public function testIndicesExistsShouldThrow404ErrorIfIndexDoesNotExists(): void
@@ -46,7 +76,7 @@ class ClientTest extends TestCase
 
     public function testIndicesExistsShouldNotThrowAnErrorIfIndexExists(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $response = Promise\wait($this->client->existsIndex(self::TEST_INDEX));
         $this->assertNull($response);
     }
@@ -68,7 +98,7 @@ class ClientTest extends TestCase
 
     public function testDocumentsExistsShouldThrowA404ErrorIfDocumentDoesNotExists(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $this->expectException(Error::class);
         $this->expectExceptionCode(404);
         Promise\wait($this->client->existsDocument(self::TEST_INDEX, 'not-existent-doc'));
@@ -203,29 +233,29 @@ class ClientTest extends TestCase
 
     public function testRefreshOneIndex(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $response = Promise\wait($this->client->refresh(self::TEST_INDEX));
         $this->assertCount(1, $response);
     }
 
     public function testRefreshManyIndices(): void
     {
-        Promise\wait($this->client->createIndex('an_index'));
-        Promise\wait($this->client->createIndex('another_index'));
+        Promise\wait($this->client->createOrUpdateIndex('an_index'));
+        Promise\wait($this->client->createOrUpdateIndex('another_index'));
         $response = Promise\wait($this->client->refresh('an_index,another_index'));
         $this->assertCount(1, $response);
     }
 
     public function testRefreshAllIndices(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $response = Promise\wait($this->client->refresh());
         $this->assertCount(1, $response);
     }
 
     public function testSearch(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         Promise\wait(
             $this->client->indexDocument(self::TEST_INDEX, 'document-id', ['uuid' => 'this-is-a-uuid', 'payload' => []], ['refresh' => 'true'])
         );
@@ -243,7 +273,7 @@ class ClientTest extends TestCase
 
     public function testCount(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         Promise\wait(
             $this->client->indexDocument(self::TEST_INDEX, '', ['payload' => []], ['refresh' => 'true'])
         );
@@ -259,7 +289,7 @@ class ClientTest extends TestCase
 
     public function testCountWithQuery(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         Promise\wait(
             $this->client->indexDocument(self::TEST_INDEX, '', ['user' => 'kimchy'], ['refresh' => 'true'])
         );
@@ -275,7 +305,7 @@ class ClientTest extends TestCase
 
     public function testBulkIndex(): void
     {
-        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        Promise\wait($this->client->createOrUpdateIndex(self::TEST_INDEX));
         $body = [];
         $responses = [];
         for ($i = 1; $i <= 1234; $i++) {
