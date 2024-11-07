@@ -225,6 +225,14 @@ class Client
         return $this->doJsonRequest($method, $uri, $body);
     }
 
+    public function updateMappings(string $target, array $body = null): Promise
+    {
+        $method = 'PUT';
+        $uri = implode('/', [$this->baseUri, urlencode($target), '_mappings']);
+
+        return $this->doJsonRequest($method, $uri, $body);
+    }
+
     private function createJsonRequest(string $method, string $uri, string $body = null): Request
     {
         $request = new Request($uri, $method);
