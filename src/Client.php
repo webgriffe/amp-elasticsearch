@@ -28,19 +28,11 @@ class Client
         $this->baseUri = rtrim($baseUri, '/');
     }
 
-    public function createOrUpdateIndex(string $index, array $body = null): Promise
+    public function createIndex(string $index, array $body = null): Promise
     {
         $method = 'PUT';
         $uri = implode('/', [$this->baseUri, urlencode($index)]);
         return $this->doJsonRequest($method, $uri, $body);
-    }
-
-    /**
-     * @deprecated Use createOrUpdateIndex instead
-     */
-    public function createIndex(string $index): Promise
-    {
-        return $this->createOrUpdateIndex($index);
     }
 
     public function existsIndex(string $index): Promise
@@ -270,7 +262,7 @@ class Client
     {
         $jsonBody = null;
         if ($body !== null) {
-            $jsonBody = json_encode($body, JSON_THROW_ON_ERROR);
+            $jsonBody = json_encode($body, JSON_THROW_ON_ERROR | JSON_FORCE_OBJECT);
         }
         return $this->doRequest($this->createJsonRequest($method, $uri, $jsonBody));
     }
