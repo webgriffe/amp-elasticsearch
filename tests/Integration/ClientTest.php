@@ -318,4 +318,39 @@ class ClientTest extends TestCase
         $this->assertIsArray($responses);
         $this->assertCount(34, $responses['items']);
     }
+
+    public function testCreateAlias(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+
+        $response = Promise\wait(
+            $this->client->createOrUpdateAlias(
+                self::TEST_INDEX,
+                'alias',
+                ['filter' => ['term' => ['user' => 'kimchy']]]
+            )
+        );
+        $this->assertIsArray($response);
+        $this->assertTrue($response['acknowledged']);
+        $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
+        $this->assertEquals('kimchy', $response[self::TEST_INDEX]['aliases']['alias']['filter']['term']['user']);
+    }
+
+    public function testUpdateAlias(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+        $this->client->createOrUpdateAlias(self::TEST_INDEX, 'alias');
+
+        $response = Promise\wait(
+            $this->client->createOrUpdateAlias(
+                self::TEST_INDEX,
+                'alias',
+                ['filter' => ['term' => ['user' => 'kimchy']]]
+            )
+        );
+        $this->assertIsArray($response);
+        $this->assertTrue($response['acknowledged']);
+        $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
+        $this->assertEquals('kimchy', $response[self::TEST_INDEX]['aliases']['alias']['filter']['term']['user']);
+    }
 }

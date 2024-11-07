@@ -209,6 +209,14 @@ class Client
         );
     }
 
+    public function createOrUpdateAlias(string $target, string $alias, ?array $body = null): Promise
+    {
+        $method = 'PUT';
+        $uri = implode('/', [$this->baseUri, urlencode($target), '_aliases', urlencode($alias)]);
+
+        return $this->doJsonRequest($method, $uri, $body);
+    }
+
     private function createJsonRequest(string $method, string $uri, string $body = null): Request
     {
         $request = new Request($uri, $method);
