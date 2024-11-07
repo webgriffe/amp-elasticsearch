@@ -353,4 +353,21 @@ class ClientTest extends TestCase
         $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
         $this->assertEquals('kimchy', $response[self::TEST_INDEX]['aliases']['alias']['filter']['term']['user']);
     }
+
+    public function testUpdateIndexSettings(): void
+    {
+        Promise\wait($this->client->createIndex(self::TEST_INDEX));
+
+        $response = Promise\wait(
+            $this->client->updateIndexSettings(
+                self::TEST_INDEX,
+                ['index' => ['mapping' => ['total_fields' => ['limit' => 2000]]]]
+            )
+        );
+
+        $this->assertIsArray($response);
+        $this->assertTrue($response['acknowledged']);
+        $response = Promise\wait($this->client->getIndex(self::TEST_INDEX));
+        $this->assertEquals(2000, $response[self::TEST_INDEX]['settings']['index']['mapping']['total_fields']['limit']);
+    }
 }
