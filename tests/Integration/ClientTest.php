@@ -13,6 +13,8 @@ class ClientTest extends TestCase
 {
     const TEST_INDEX = 'test_index';
     const DEFAULT_ES_URL = 'http://127.0.0.1:9200';
+    const DEFAULT_ES_USER = 'elastic';
+    const DEFAULT_ES_PASSWORD = 'mySecretPassword';
 
     /**
      * @var Client
@@ -22,7 +24,9 @@ class ClientTest extends TestCase
     protected function setUp(): void
     {
         $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
-        $this->client = new Client($esUrl);
+        $esUser = getenv('ES_USER') ?: self::DEFAULT_ES_USER;
+        $esPassword = getenv('ES_PASSWORD') ?: self::DEFAULT_ES_PASSWORD;
+        $this->client = new Client($esUrl, $esUser, $esPassword);
         $indices = Promise\wait($this->client->catIndices());
         foreach ($indices as $index) {
             Promise\wait($this->client->deleteIndex($index['index']));
