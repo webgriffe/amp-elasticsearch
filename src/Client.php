@@ -23,17 +23,18 @@ class Client
      */
     private $httpClient;
 
-    public function __construct(string $baseUri, ?string $username = null, ?string $password = null)
+    public function __construct(string $baseUri)
     {
         $this->httpClient = HttpClientBuilder::buildDefault();
-
-        if ($username && $password) {
-            $authHeader = base64_encode("$username:$password");
-            $this->httpClient = (new HttpClientBuilder())
-                ->intercept(new SetRequestHeaderIfUnset('Authorization', 'Basic '. $authHeader))
-                ->build();
-        }
         $this->baseUri = rtrim($baseUri, '/');
+    }
+
+    public function setCredentials(string $username, string $password): void
+    {
+        $authHeader = base64_encode("$username:$password");
+        $this->httpClient = (new HttpClientBuilder())
+            ->intercept(new SetRequestHeaderIfUnset('Authorization', 'Basic ' . $authHeader))
+            ->build();
     }
 
     public function createIndex(string $index, array $body = null): Promise

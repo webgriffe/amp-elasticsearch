@@ -26,7 +26,8 @@ class ClientTest extends TestCase
         $esUrl = getenv('ES_URL') ?: self::DEFAULT_ES_URL;
         $esUser = getenv('ES_USER') ?: self::DEFAULT_ES_USER;
         $esPassword = getenv('ES_PASSWORD') ?: self::DEFAULT_ES_PASSWORD;
-        $this->client = new Client($esUrl, $esUser, $esPassword);
+        $this->client = new Client($esUrl);
+        $this->client->setCredentials($esUser, $esPassword);
         $indices = Promise\wait($this->client->catIndices());
         foreach ($indices as $index) {
             Promise\wait($this->client->deleteIndex($index['index']));
