@@ -32,6 +32,13 @@ Loop::run(function () {
 });
 ```
 
+If your elasticsearch instance requires user authentication, you can set username and password when you build the client, like this:
+
+```php
+  $client = new Webgriffe\AmpElasticsearch\Client('http://my.elasticsearch.test:9200', 'myUsername', 'myPassword');
+});
+```
+
 See other usage examples in the [`tests/Integration/ClientTest.php`](./tests/Integration/ClientTest.php).
 
 All client methods return an array representation of the ElasticSearch REST API responses in case of sucess or an `Webgriffe\AmpElasticsearch\Error` in case of error.
