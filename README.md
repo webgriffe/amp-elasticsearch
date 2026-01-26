@@ -13,6 +13,7 @@ concurrency framework.
 - PHP 8.2
 - PHP 8.3
 - PHP 8.4
+- PHP 8.5
 
 **Installation**
 
