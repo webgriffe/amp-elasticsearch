@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   php:
-    image: "php:8.4"
+    image: "php:8.5"
     volumes:
       - "./:/app"
     working_dir: "/app"
