@@ -6,10 +6,11 @@ namespace Webgriffe\AmpElasticsearch;
 
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Interceptor\SetRequestHeaderIfUnset;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
-use function Amp\call;
 use Amp\Promise;
+use function Amp\call;
 
 class Client
 {
@@ -26,6 +27,14 @@ class Client
     {
         $this->httpClient = HttpClientBuilder::buildDefault();
         $this->baseUri = rtrim($baseUri, '/');
+    }
+
+    public function setCredentials(string $username, string $password): void
+    {
+        $authHeader = base64_encode("$username:$password");
+        $this->httpClient = (new HttpClientBuilder())
+            ->intercept(new SetRequestHeaderIfUnset('Authorization', 'Basic ' . $authHeader))
+            ->build();
     }
 
     public function createIndex(string $index, array $body = null): Promise
